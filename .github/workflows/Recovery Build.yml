@@ -35,7 +35,7 @@ on:
 jobs:
   build:
     if: github.event.repository.owner.id == github.event.sender.id
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     permissions:
       contents: write
     steps:
@@ -58,14 +58,14 @@ jobs:
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
 
-    - name: Install Python 2 and JDK 7
+    - name: Install Python 2 and JDK 8
       run: |
         sudo apt update
-        sudo apt install -y python2 python2-dev openjdk-7-jdk
+        sudo apt install -y python2 python2-dev openjdk-8-jdk
         sudo ln -sf /usr/bin/python2 /usr/bin/python
-        sudo update-alternatives --set java /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java
-        sudo update-alternatives --set javac /usr/lib/jvm/java-7-openjdk-amd64/bin/javac
-        echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64" >> $GITHUB_ENV
+        sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+        sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac
+        echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $GITHUB_ENV
 
     - name: Install build dependencies
       run: |
@@ -80,7 +80,7 @@ jobs:
 
     - name: Install repo
       run: |
-        mkdir ~/bin
+        mkdir -p ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
         chmod a+x ~/bin/repo
         sudo ln -sf ~/bin/repo /usr/bin/repo
