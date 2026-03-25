@@ -34,7 +34,8 @@ on:
 
 jobs:
   build:
-    if: github.event.repository.owner.id == github.event.sender.id
+    # 临时移除此条件来测试是否是条件导致的问题
+    # if: github.event.repository.owner.id == github.event.sender.id
     runs-on: ubuntu-20.04
     permissions:
       contents: write
@@ -63,8 +64,8 @@ jobs:
         sudo apt update
         sudo apt install -y python2 python2-dev openjdk-8-jdk
         sudo ln -sf /usr/bin/python2 /usr/bin/python
-        sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
-        sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac
+        sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java 2>/dev/null || true
+        sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac 2>/dev/null || true
         echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $GITHUB_ENV
 
     - name: Install build dependencies
@@ -83,15 +84,15 @@ jobs:
         mkdir -p ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
         chmod a+x ~/bin/repo
-        sudo ln -sf ~/bin/repo /usr/bin/repo
+        echo "$HOME/bin" >> $GITHUB_PATH
 
     - name: Initialize repo
       run: |
-        mkdir workspace
+        mkdir -p workspace
         cd workspace
         echo "workspace-folder=$(pwd)" >> $GITHUB_OUTPUT
-        git config --global user.name "wxwzch"
-        git config --global user.email "your-email@example.com"
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
         repo init --depth=1 -u ${{ github.event.inputs.MANIFEST_URL }} -b ${{ github.event.inputs.MANIFEST_BRANCH }}
       id: pwd
 
