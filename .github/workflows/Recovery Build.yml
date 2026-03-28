@@ -45,7 +45,7 @@ on:
 jobs:
   build:
     if: github.event.repository.owner.id == github.event.sender.id
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
@@ -70,14 +70,24 @@ jobs:
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
       # That's it! Now use your normal steps
-      
+    - name: Install Python 2
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python2
+        sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1
+        sudo update-alternatives --set python /usr/bin/python2
+        
     # 在这里添加 JDK 8 安装步骤
     - name: Install JDK 8
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-8-jdk
         echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $GITHUB_ENV
-
+        
+    - name: Install build dependencies
+      run: |
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libxml2-utils lzop pngcrush schedtool squashfs-tools xsltproc zip zlib1g-dev
+        
     - name: Prepare the environment
       run: |
         sudo apt update && sudo apt upgrade -y
