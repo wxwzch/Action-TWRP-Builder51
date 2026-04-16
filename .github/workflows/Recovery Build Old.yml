@@ -156,28 +156,75 @@ jobs:
         lunch ${{ github.event.inputs.MAKEFILE_NAME }}-eng && make clean && make ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc --all)
       working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
-    # ========== 新增调试步骤：列出所有生成的文件 ==========
-    - name: List generated files
+    - name: Verify artifacts before release
       run: |
-        echo "=== out/target/product/${{ github.event.inputs.DEVICE_NAME }}/ contents ==="
-        ls -la out/target/product/${{ github.event.inputs.DEVICE_NAME }}/ || echo "Directory not found"
-        echo "=== Find any .img or .zip files under out/ ==="
-        find out/ -type f \( -name "*.img" -o -name "*.zip" \) 2>/dev/null || echo "No img/zip files found"
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        cd ${{ steps.pwd.outputs.workspace-folder }}
+        
+        DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
+        IMG_PATH="out/target/product/${DEVICE}/recovery.img"
+        
+        echo "::group::Checking build artifacts"
+        echo "Expected device: ${DEVICE}"
+        echo "Checking path: ${IMG_PATH}"
+        echo "Current directory: $(pwd)"
+        
+        # 列出目录内容
+        if [ -d "out/target/product/${DEVICE}" ]; then
+          echo "=== Directory contents ==="
+          ls -la "out/target/product/${DEVICE}/"
+          echo "=========================="
+        else
+          echo "❌ Directory out/target/product/${DEVICE} does not exist!"
+          echo "Available directories in out/target/product/:"
+          ls -la out/target/product/ 2>/dev/null || echo "No product directories found"
+        fi
+        
+        # 检查 recovery.img
+        if [ -f "${IMG_PATH}" ]; then
+          echo "✅ recovery.img found!"
+          echo "File size: $(du -h ${IMG_PATH} | cut -f1)"
+          echo "File type: $(file ${IMG_PATH})"
+        else
+          echo "❌ recovery.img NOT found at ${IMG_PATH}"
+          # 尝试查找任何 .img 文件
+          echo "Searching for any .img files:"
+          find out -name "*.img" 2>/dev/null | head -10
+        fi
+        
+        # 检查 zip 文件
+        ZIP_COUNT=$(find out/target/product/${DEVICE}/ -name "*.zip" 2>/dev/null | wc -l)
+        echo "Found ${ZIP_COUNT} zip file(s)"
+        
+        echo "::endgroup::"
+        
+        # 如果文件不存在，失败
+        if [ ! -f "${IMG_PATH}" ]; then
+          echo "::error::recovery.img not found! Release will fail."
+          exit 1
+        fi
+
+    - name: Copy artifacts to workspace
+      run: |
+        cd ${{ steps.pwd.outputs.workspace-folder }}
+        DEVICE="${{ github.event.inputs.DEVICE_NAME }}"
+        mkdir -p ${GITHUB_WORKSPACE}/artifacts
+        cp out/target/product/${DEVICE}/recovery.img ${GITHUB_WORKSPACE}/artifacts/ || echo "No recovery.img"
+        cp out/target/product/${DEVICE}/*.zip ${GITHUB_WORKSPACE}/artifacts/ 2>/dev/null || echo "No zip files"
+        echo "=== Artifacts copied to ${GITHUB_WORKSPACE}/artifacts ==="
+        ls -la ${GITHUB_WORKSPACE}/artifacts/
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v2
       with:
-        # 注意：TWRP 的标准输出是 recovery.img，而不是 ${BUILD_TARGET}.img
         files: |
-          out/target/product/${{ github.event.inputs.DEVICE_NAME }}/recovery.img
-          out/target/product/${{ github.event.inputs.DEVICE_NAME }}/*.zip
+          artifacts/recovery.img
+          artifacts/*.zip
         name: ${{ github.event.inputs.DEVICE_NAME }}-${{ github.run_id }}
         tag_name: ${{ github.run_id }}
         body: |
           Manifest: ${{ github.event.inputs.MANIFEST_BRANCH }}
           Device: ${{ github.event.inputs.DEVICE_NAME }}
           Target: ${{ github.event.inputs.BUILD_TARGET }}.img
-        overwrite_files: true
+        overwrite: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
